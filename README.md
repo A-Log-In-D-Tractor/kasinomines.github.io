@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -15,11 +15,6 @@
             color: #e0e0e0;
             margin: 0;
         }
-        #pip-instructions {
-            margin-bottom: 15px;
-            color: #ff8c00;
-            font-size: 0.9em;
-        }
         .container {
             display: flex;
             flex-direction: row;
@@ -33,8 +28,8 @@
         .left-panel {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            width: 180px;
+            gap: 12px;
+            width: 200px;
         }
         .right-panel {
             min-width: 250px;
@@ -45,18 +40,21 @@
             border-radius: 10px;
             padding: 10px;
         }
-        #grid {
-            display: grid;
-            gap: 4px;
-        }
+        #grid { display: grid; gap: 4px; }
         .cell {
             cursor: pointer;
             font-size: 24px;
             user-select: none;
             transition: transform 0.1s;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        .cell:hover { transform: scale(1.1); }
-        
+        .cell:hover:not(.locked) { transform: scale(1.1); }
+        .cell.locked { cursor: default; }
+
         .controls label {
             display: block;
             margin-bottom: 5px;
@@ -73,46 +71,30 @@
             width: 100%;
             box-sizing: border-box;
         }
-        input[type="range"] { padding: 0; }
-
         button {
             padding: 10px;
             cursor: pointer;
             border: none;
             border-radius: 6px;
             font-weight: bold;
+            color: white;
             transition: all 0.1s ease;
         }
-
-        #btn-pip {
-            background: #6f42c1;
-            color: white;
-            margin-bottom: 10px;
-            width: 200px;
-        }
-
-        #btn-dollar {
-            background: #007bff;
-            color: white;
-            box-shadow: 0 4px #0056b3;
-            transform: translateY(0);
-        }
-        #btn-dollar.active {
-            background: #28a745;
-            box-shadow: 0 1px #1e7e34;
-            transform: translateY(3px);
-        }
-
-        #btn-copy {
-            background: #ff8c00;
-            color: white;
-            margin-top: 5px;
-        }
+        #btn-pip { background: #6f42c1; margin-bottom: 10px; width: 200px; }
+        #btn-dollar { background: #007bff; box-shadow: 0 4px #0056b3; }
+        #btn-dollar.active { background: #28a745; box-shadow: 0 1px #1e7e34; transform: translateY(3px); }
+        
+        .action-row { display: flex; gap: 8px; }
+        #btn-play { background: #dc3545; flex: 1; }
+        #btn-play:disabled { background: #555; cursor: not-allowed; opacity: 0.5; }
+        #btn-reset { background: #0d6efd; flex: 1; }
+        
+        #btn-copy { background: #ff8c00; margin-top: 5px; }
         
         #coord-display {
             margin-top: 20px;
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             padding: 12px;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
@@ -126,8 +108,7 @@
 </head>
 <body>
 
-    <div id="pip-instructions">Pop out to get an overlay</div>
-    <button id="btn-pip">🗔 Pop Out</button>
+    <button id="btn-pip">🗔 Pop Out Tool</button>
 
     <div class="container" id="main-content">
         <div class="left-panel">
@@ -135,19 +116,23 @@
                 <label>Size: <span id="size-val">5</span></label>
                 <input type="range" id="size-slider" min="2" max="10" value="5">
             </div>
-
             <div class="controls">
                 <label>Mines:</label>
                 <input type="number" id="mine-text" value="3" min="1">
                 <input type="range" id="mine-slider" min="1" value="3">
             </div>
-
             <div class="controls">
                 <label>Bet $:</label>
                 <input type="number" id="bet-text" value="0" min="0">
             </div>
 
             <button id="btn-dollar">$</button>
+
+            <div class="action-row">
+                <button id="btn-play">PLAY</button>
+                <button id="btn-reset">RESET</button>
+            </div>
+
             <button id="btn-copy">Copy Command</button>
         </div>
 
@@ -165,6 +150,8 @@
     const mineSlider = document.getElementById('mine-slider');
     const betText = document.getElementById('bet-text');
     const dollarBtn = document.getElementById('btn-dollar');
+    const playBtn = document.getElementById('btn-play');
+    const resetBtn = document.getElementById('btn-reset');
     const grid = document.getElementById('grid');
     const coordDisplay = document.getElementById('coord-display');
     const copyBtn = document.getElementById('btn-copy');
@@ -173,12 +160,43 @@
 
     let clickedCoordinates = [];
     let isCashoutActive = false;
+    let hasBeenPlayed = false;
+    let currentContext = document; // Tracks if we are in main page or PiP
 
-    // Toggle $ Button
     dollarBtn.onclick = () => {
         isCashoutActive = !isCashoutActive;
         dollarBtn.classList.toggle('active');
+        playBtn.disabled = isCashoutActive;
         updateDisplay();
+    };
+
+    playBtn.onclick = () => {
+        if (isCashoutActive) return;
+        hasBeenPlayed = true;
+        
+        // Use currentContext to find cells even if popped out
+        const cells = currentContext.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            if (cell.textContent === '🟧') {
+                cell.textContent = '💎';
+                cell.classList.add('locked');
+            }
+        });
+
+        clickedCoordinates = [];
+        updateDisplay();
+    };
+
+    resetBtn.onclick = () => {
+        sizeSlider.value = 5;
+        mineText.value = 3;
+        mineSlider.value = 3;
+        betText.value = 0;
+        isCashoutActive = false;
+        hasBeenPlayed = false;
+        dollarBtn.classList.remove('active');
+        playBtn.disabled = false;
+        generateGrid();
     };
 
     function updateDisplay() {
@@ -186,8 +204,9 @@
         const mines = mineText.value;
         const bet = betText.value || 0;
         const coords = clickedCoordinates.join(' ');
-        const cashoutSuffix = isCashoutActive ? " cashout" : "";
-        let output = `!mines ${bet} ${size} ${mines} ${coords} ${cashoutSuffix}`;
+        const cashout = isCashoutActive ? "cashout" : "";
+        
+        let output = hasBeenPlayed ? `!mines ${coords} ${cashout}` : `!mines ${bet} ${size} ${mines} ${coords} ${cashout}`;
         coordDisplay.value = output.trim().replace(/\s\s+/g, ' ');
     }
 
@@ -195,12 +214,8 @@
         const size = parseInt(sizeSlider.value);
         sizeValDisplay.textContent = size;
         const maxMines = Math.pow(size, 2) - 1;
-        mineText.max = maxMines;
-        mineSlider.max = maxMines;
-        if (parseInt(mineText.value) > maxMines) {
-            mineText.value = maxMines;
-            mineSlider.value = maxMines;
-        }
+        mineText.max = maxMines; mineSlider.max = maxMines;
+        if (parseInt(mineText.value) > maxMines) { mineText.value = maxMines; mineSlider.value = maxMines; }
 
         grid.innerHTML = '';
         grid.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
@@ -214,10 +229,11 @@
                 const coordStr = `${r},${c}`;
                 
                 cell.onclick = () => {
+                    if (cell.classList.contains('locked')) return;
                     if (cell.textContent === '⬜') {
                         cell.textContent = '🟧';
                         clickedCoordinates.push(coordStr);
-                    } else {
+                    } else if (cell.textContent === '🟧') {
                         cell.textContent = '⬜';
                         clickedCoordinates = clickedCoordinates.filter(item => item !== coordStr);
                     }
@@ -229,7 +245,7 @@
         updateDisplay();
     }
 
-    // Input Events
+    // Input Listeners
     mineText.oninput = () => { mineSlider.value = mineText.value; updateDisplay(); };
     mineSlider.oninput = () => { mineText.value = mineSlider.value; updateDisplay(); };
     betText.oninput = updateDisplay;
@@ -243,31 +259,22 @@
         setTimeout(() => copyBtn.textContent = originalText, 1000);
     };
 
-    // --- POP OUT LOGIC ---
+    // Pop Out Logic
     pipBtn.onclick = async () => {
-        if (!('documentPictureInPicture' in window)) {
-            alert("Your browser doesn't support the Pop Out API yet. Try Chrome or Edge.");
-            return;
-        }
+        if (!('documentPictureInPicture' in window)) { alert("Browser not supported."); return; }
+        
+        const pipWindow = await window.documentPictureInPicture.requestWindow({ width: 450, height: 650 });
+        currentContext = pipWindow.document; // Update context to the pop-up
 
-        // Open the PiP window
-        const pipWindow = await window.documentPictureInPicture.requestWindow({
-            width: mainContent.clientWidth + 40,
-            height: mainContent.clientHeight + 150,
-        });
-
-        // Copy styles to the new window so it looks right
         const style = document.createElement('style');
         style.textContent = document.getElementById('main-styles').textContent;
         pipWindow.document.head.appendChild(style);
-
-        // Move the content and the coordinate display into the PiP window
         pipWindow.document.body.style.backgroundColor = "#121212";
         pipWindow.document.body.append(mainContent);
         pipWindow.document.body.append(coordDisplay);
 
-        // When the PiP window closes, move everything back to the main page
-        pipWindow.addEventListener("pagehide", (event) => {
+        pipWindow.addEventListener("pagehide", () => {
+            currentContext = document; // Reset context back to main page
             document.body.append(mainContent);
             document.body.append(coordDisplay);
         });
