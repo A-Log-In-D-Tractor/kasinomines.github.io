@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -187,7 +187,7 @@
         const bet = betText.value || 0;
         const coords = clickedCoordinates.join(' ');
         const cashoutSuffix = isCashoutActive ? " cashout" : "";
-        let output = `!mines ${size} ${mines} ${coords} ${bet}${cashoutSuffix}`;
+        let output = `!mines ${bet} ${size} ${mines} ${coords} ${cashoutSuffix}`;
         coordDisplay.value = output.trim().replace(/\s\s+/g, ' ');
     }
 
